@@ -7,6 +7,27 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include "queue.h"
+#include "base64.h"
+
+int fromHex(char ch) {
+  if(ch >= '0' && ch <= '9')
+    return (int) ch - '0';
+  return (int) ch - 'A' + 10;
+}
+
+void decodeURL(char* src,char* dest) {
+  while(*src != '\0') {
+    if(*src == '%') {
+      ++src;
+      int n1 = fromHex(*src++);
+      int n2 = fromHex(*src++);
+      *dest++ = (char) n1*16+n2;
+    } else {
+      *dest++ = *src++;
+    }
+  }
+  *dest = '\0';
+}
 
 void serveRequest(int fd) {
   // Read the request
@@ -16,39 +37,63 @@ void serveRequest(int fd) {
 
   // Grab the method and URL
   char method[16];
+  //question: what kind of URL are we grabbing here?
+  //this is different than the url that will arrive in the body?
   char url[128];
   sscanf(buffer,"%s %s",method,url);
 
-  // Try to get the file the user wants
-  char fileName[128];
-  strcpy(fileName,"www");
-  strcat(fileName,url);
-  int filed = open(fileName,O_RDONLY);
-  if(filed == -1) {
-    // The user has a requested a file that we don't have.
-    // Send them back the canned 404 error response.
-    int f404 = open("404Response.txt",O_RDONLY);
-    int readSize = read(f404,buffer,1023);
-    close(f404);
-    write(fd,buffer,readSize);
-  } else {
-    const char* responseStatus = "HTTP/1.1 200 OK\n";
-    const char* responseOther = "Connection: close\nContent-Type: text/html\n";
-    // Get the size of the file
-    char len[64];
-    struct stat st;
-    fstat(filed,&st);
-    sprintf(len,"Content-Length: %d\n\n",(int) st.st_size);
-    // Send the headers
-    write(fd,responseStatus,strlen(responseStatus));
-    write(fd,responseOther,strlen(responseOther));
-    write(fd,len,strlen(len));
-    // Send the file
-    while(bytesRead = read(filed,buffer,1023)) {
-      write(fd,buffer,bytesRead);
+
+  //Handle POST -encode URL
+  if (strcmp(method ,"POST") == 0){
+    //question: what strstr() function returns is only a position in the buffer, not the url that we want right?
+    char *urlPosition = strstr(buffer, "\r\n\r\nurl=");
+    //allocate memory for the url
+    size_t urlLength = strlen(urlPosition+8);
+    char *userURL = (char *)malloc(urlLength + 1);
+    strcpy(userURL, urlPosition+8);
+
+    //questions: can I just reuse the buffer to save the decoded url like I did here?
+    //or should I create a new space for the decoded url destination.
+    decodeURL(&userURL, buffer);
+
+    //question: since we're writing one url at a time to the txt file,
+    //should I use the c standard library function instead of system calls?
+    FILE* f = fopen("url.txt","wa");
+    long position = ftell(f);
+    //question: I'm guessing from here, I do need to allocate a memory for the decoded url because I'm not sure if I can use the buffer as a parameter
+    fprintf(f, "%s",buffer);
+    fprintf(f, "%s", "\n");
+    fclose(f);
+
+    char encoded[64];
+    encode(position, encoded);
+
+    int f200 = open("200Response.txt",O_RDONLY);
+    int readSize = read(f200,buffer,1023);
+    buffer[readSize] = '\0';
+    close(f200);
+
+    char* OKpoisition = strstr(buffer,"XXXXXX");
+
+    int encodedLength = strlen(encoded);
+    int diff = 6 - encodedLength;
+    if(diff != 0){
+      for(int i=0; i<diff; i++){
+        encoded[encodedLength] = ' ';
+        encodedLength++;
+      }
+      encoded[encodedLength] = '\0';
     }
-    close(filed);
+    strcpy(&OKpoisition, encoded);
+    //if encoded < 6 characters fill in with " "
+    write(fd,buffer,readSize);
   }
+  else {
+    
+  }
+  //Handle GET
+
+  
   close(fd);
 }
 

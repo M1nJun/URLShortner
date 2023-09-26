@@ -1,0 +1,9 @@
+{
+  "makefile.launchConfigurations": [
+    {
+      "cwd": "/Users/iminjun/Desktop/github repositories/URLShortner/Miniweb",
+      "binaryPath": "/Users/iminjun/Desktop/github repositories/URLShortner/Miniweb/miniweb",
+      "binaryArgs": []
+    }
+  ]
+}

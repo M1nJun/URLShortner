@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <pthread.h>
+#include <stdlib.h>
 #include "queue.h"
 #include "base64.h"
 
@@ -48,13 +49,14 @@ void serveRequest(int fd) {
     //question: what strstr() function returns is only a position in the buffer, not the url that we want right?
     char *urlPosition = strstr(buffer, "\r\n\r\nurl=");
     //allocate memory for the url
-    size_t urlLength = strlen(urlPosition+8);
-    char *userURL = (char *)malloc(urlLength + 1);
+    //size_t urlLength = strlen(urlPosition+8);
+    //char *userURL = (char *)malloc(urlLength + 1);
+    char userURL[1024];
     strcpy(userURL, urlPosition+8);
 
     //questions: can I just reuse the buffer to save the decoded url like I did here?
     //or should I create a new space for the decoded url destination.
-    decodeURL(&userURL, buffer);
+    decodeURL(userURL, buffer);
 
     //question: since we're writing one url at a time to the txt file,
     //should I use the c standard library function instead of system calls?
@@ -84,14 +86,14 @@ void serveRequest(int fd) {
       }
       encoded[encodedLength] = '\0';
     }
-    strcpy(&OKpoisition, encoded);
+    strcpy(OKpoisition, encoded);
     //if encoded < 6 characters fill in with " "
     write(fd,buffer,readSize);
   }
   //Handle GET
   else {
     char* result = strstr(url, "/s/");
-    if(result != NULL){
+    if(result == NULL){
       int f404 = open("404Response.txt",O_RDONLY);
       int readSize = read(f404,buffer,1023);
       close(f404);
@@ -104,14 +106,13 @@ void serveRequest(int fd) {
       encoded[6] = '\0';
 
       //decoded position of the url in the url.txt
-      long position[64] = decode(encoded);
+      long position = decode(encoded);
       //question: r or rb?
       FILE* f = fopen("url.txt","rb");
       fseek(f, position, SEEK_SET);
       char desiredURL[128];
       //question: how do I know the size and length of the url that is stored in the url.txt?
-      size_t bytesRead = fread(desiredURL, sizeof(), len(), f);
-      desiredURL[bytesRead] = '\0';
+      fgets(desiredURL, 127, f);
 
       int f301 = open("301Response.txt",O_RDONLY);
       int readSize = read(f301,buffer,1023);
@@ -119,8 +120,8 @@ void serveRequest(int fd) {
 
       //question: not too sure if & should be there, and if +10 works?
       char* RedirectPosition = strstr(buffer,"Location: ");
-      strcpy(&RedirectPosition+10, desiredURL);
-      write(fd,buffer,readSize);
+      strcpy(RedirectPosition+10, desiredURL);
+      write(fd,buffer,readSize+strlen(desiredURL));
     }
   }
   close(fd);
@@ -159,7 +160,7 @@ int main() {
   struct sockaddr_in server;
   server.sin_family = AF_INET;
   server.sin_addr.s_addr = INADDR_ANY;
-  server.sin_port = htons( 8888 );
+  server.sin_port = htons( 8889 );
 
   // Bind to the port we want to use
   if(bind(server_socket,(struct sockaddr *)&server , sizeof(server)) < 0) {

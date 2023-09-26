@@ -88,12 +88,41 @@ void serveRequest(int fd) {
     //if encoded < 6 characters fill in with " "
     write(fd,buffer,readSize);
   }
-  else {
-    
-  }
   //Handle GET
+  else {
+    char* result = strstr(url, "/s/");
+    if(result != NULL){
+      int f404 = open("404Response.txt",O_RDONLY);
+      int readSize = read(f404,buffer,1023);
+      close(f404);
+      write(fd,buffer,readSize);
+    }
+    else{
+      char encoded[7];
+      //question: not result is the position of where /s/ starts, so should I do the +3?
+      strcpy(encoded, result+3);
+      encoded[6] = '\0';
 
-  
+      //decoded position of the url in the url.txt
+      long position[64] = decode(encoded);
+      //question: r or rb?
+      FILE* f = fopen("url.txt","rb");
+      fseek(f, position, SEEK_SET);
+      char desiredURL[128];
+      //question: how do I know the size and length of the url that is stored in the url.txt?
+      size_t bytesRead = fread(desiredURL, sizeof(), len(), f);
+      desiredURL[bytesRead] = '\0';
+
+      int f301 = open("301Response.txt",O_RDONLY);
+      int readSize = read(f301,buffer,1023);
+      close(f301);
+
+      //question: not too sure if & should be there, and if +10 works?
+      char* RedirectPosition = strstr(buffer,"Location: ");
+      strcpy(&RedirectPosition+10, desiredURL);
+      write(fd,buffer,readSize);
+    }
+  }
   close(fd);
 }
 

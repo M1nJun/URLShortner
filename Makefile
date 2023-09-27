@@ -8,4 +8,4 @@ queue.o: queue.c queue.h
 	gcc queue.c -c -g -pthread
 
 base64.o: base64.c base64.h
-	gcc base64.c -c -g 
+	gcc base64.c -c -g

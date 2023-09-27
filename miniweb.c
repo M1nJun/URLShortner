@@ -116,11 +116,12 @@ void serveRequest(int fd) {
 
       int f301 = open("301Response.txt",O_RDONLY);
       int readSize = read(f301,buffer,1023);
+      buffer[readSize] = '\0';
       close(f301);
 
       //question: not too sure if & should be there, and if +10 works?
-      char* RedirectPosition = strstr(buffer,"Location: ");
-      strcpy(RedirectPosition+10, desiredURL);
+      char* RedirectPosition = strstr(buffer,"http://");
+      strcpy(RedirectPosition+7, desiredURL);
       write(fd,buffer,readSize+strlen(desiredURL));
     }
   }
@@ -160,7 +161,7 @@ int main() {
   struct sockaddr_in server;
   server.sin_family = AF_INET;
   server.sin_addr.s_addr = INADDR_ANY;
-  server.sin_port = htons( 8889 );
+  server.sin_port = htons( 8888 );
 
   // Bind to the port we want to use
   if(bind(server_socket,(struct sockaddr *)&server , sizeof(server)) < 0) {

@@ -60,7 +60,7 @@ void serveRequest(int fd) {
 
     //question: since we're writing one url at a time to the txt file,
     //should I use the c standard library function instead of system calls?
-    FILE* f = fopen("url.txt","wa");
+    FILE* f = fopen("url.txt","a");
     long position = ftell(f);
     //question: I'm guessing from here, I do need to allocate a memory for the decoded url because I'm not sure if I can use the buffer as a parameter
     fprintf(f, "%s",buffer);
